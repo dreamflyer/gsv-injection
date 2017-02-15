@@ -1,0 +1,34 @@
+{
+  "name": "gsv-injection",
+  "version": "0.0.1",
+  "main": "dist/index.js",
+  "scripts": {
+    "compile": "rimraf dist && tsc",
+    "generate": "node build.js",
+    "build": "npm install && npm run compile && npm run generate"
+  },
+  "dependencies": {
+    "typescript-compiler": "1.4.1-2",
+    "underscore": "^1.8.3"
+  },
+  "typings": "./dist/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dreamflyer/gsv-injection.git"
+  },
+  "keywords": [
+    "google street view",
+    "photogrammetry",
+    "panorama",
+    "gsv",
+    "google maps",
+    "webgl"
+  ],
+  "devDependencies": {
+    "typings": "^0.5.1",
+    "typescript": "1.8.7",
+    "webpack": "1.4.2",
+    "json-loader": "^0.5.1",
+    "rimraf": "*"
+  }
+}

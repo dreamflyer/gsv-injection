@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+
+<head>
+    <script src="gsv-injection.js"></script>
+    <script src="meshData.js"></script>
+</head>
+
+<body>
+    <div id="streetviewpano" style="position: absolute; top:0; bottom:0; left:0; right:0; z-index: 0"></div>
+    <script>
+        function getPanorama(lat, lng) {
+            return new Promise(function (resolve) {
+                new google.maps.StreetViewService().getPanoramaByLocation(new google.maps.LatLng(lat, lng), 50, function (data, status) {
+                    var lat = data.location.latLng.lat();
+                    var lng = data.location.latLng.lng();
+
+                    var config = {
+                        position: {
+                            lat: lat,
+                            lng: lng
+                        },
+
+                        pov: {
+                            heading: 0,
+                            pitch: 0,
+                            zoom: 1
+                        },
+
+                        disableDefaultUI: true,
+
+                        clickToGo: false
+                    }
+
+                    var panorama = new google.maps.StreetViewPanorama(document.getElementById('streetviewpano'), config);
+
+                    resolve(panorama);
+                });
+            });
+        }
+
+        function onGoogleLoad() {
+            getPanorama(41.684196, -0.888992).then(function(panorama) {
+                var mesh = new GSVInjection.Mesh();
+
+                mesh.vertices = vertices;
+                mesh.indices = indices;
+                mesh.uvMap = uvMap;
+                mesh.textureURI = 'cubetexture.png';
+
+                GSVInjection.addMesh(mesh);
+            });
+        }
+    </script>
+    <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAj0zay70G-IrthCvY7ckMZsNdC3Lv5v8s&callback=onGoogleLoad"></script>
+</body>
+</html>
