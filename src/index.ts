@@ -1,8 +1,5 @@
-/// <reference path="../typings/main.d.ts" />
 import utils = require("./utils");
 import mathUtils = require("./mathUtils");
-
-export import drawUtils = require("gm-draw-utils");
 
 export class Mesh {
     textureURI: string;
