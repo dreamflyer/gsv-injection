@@ -1,6 +1,4 @@
 /// <reference path="../typings/main.d.ts" />
-var webGl: any;
-
 var oldWebGl: any = {};
 
 var lastCalls: any[] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
@@ -37,6 +35,14 @@ function methodCalled(methodName): void {
     lastCalls.pop();
 }
 
+function getOldWebgl(glInstance): any {
+    var result: any = new Object(oldWebGl);
+
+    result.glInstance = glInstance;
+
+    return result;
+}
+
 function isDesiredCase(): boolean {
     for(var i = 0; i < desiredCases.length; i++) {
         if(isDesiredSingleCase(desiredCases[i])) {
@@ -57,15 +63,17 @@ function isDesiredSingleCase(desiredCase): boolean {
     return true;
 }
 
-function webGlInject(methodName, injectionBody): void {
+function webGlInject(methodName, injectionBody, isGlEnabled): void {
     var oldMethod = WebGLRenderingContext.prototype[methodName];
 
     register(methodName);
 
     WebGLRenderingContext.prototype[methodName] = function() {
-        webGl = this;
-
-        var newArgumens = [oldMethod, webGl, []];
+        if(!isGlEnabled(this)) {
+            return oldMethod.apply(this, arguments);
+        }
+        
+        var newArgumens = [oldMethod, this, []];
 
         for(var i = 0; i < arguments.length; i++) {
             newArgumens[2].push(arguments[i]);
@@ -95,7 +103,7 @@ function register(methodName): void {
             filteredArgs.push(arguments[i]);
         }
 
-        return field.apply(webGl, filteredArgs);
+        return field.apply(this.glInstance, filteredArgs);
     };
 }
 
@@ -125,12 +133,58 @@ var lastTexture;
 var lastUniform4fv;
 var lastUniform1f;
 var preLastUniform1f;
+var lastProgram;
+var lastMatrices = [];
 
-export function setup(canvas, callback: (webGl, oldWebGl, uniforms) => void): void {
+function findLastMatrix4fv(): any[] {
+    for(var i = 0; i < lastMatrices.length; i++) {
+        if(lastMatrices[i].program === lastProgram) {
+            return lastMatrices[i].matrix;
+        }
+    }
+
+    return null;
+}
+
+export function setup(callback: (webGl, oldWebGl, uniforms) => void, isGlEnabled: (gl) => boolean): void {
     var methods = glMethodsList();
 
     methods.forEach(methodName => {
         webGlInject(methodName + "", (oldMethod, gl, args) => {
+            if(!gl.oldWebGl) {
+                gl.oldWebGl = getOldWebgl(gl);
+            }
+
+            if(methodName === "useProgram") {
+                lastProgram = args[0];
+            }
+
+            if(methodName === 'uniformMatrix4fv') {
+                var lastUniformMatrix4fv = [args[0], args[1], args[2]];
+
+                var container;
+
+                for(var i = 0; i < lastMatrices.length; i++) {
+                    var currentContainer = lastMatrices[i];
+
+                    if(currentContainer.program === lastProgram) {
+                        container = currentContainer;
+
+                        break;
+                    }
+                }
+
+                if(!container) {
+                    container = {
+                        program: lastProgram
+                    }
+
+                    lastMatrices.push(container);
+                }
+
+                container.matrix = lastUniformMatrix4fv;
+            }
+
             if(methodName === 'bindTexture') {
                 lastTexture = args[1];
             }
@@ -145,7 +199,9 @@ export function setup(canvas, callback: (webGl, oldWebGl, uniforms) => void): vo
             }
 
             if(methodName === 'disableVertexAttribArray' && isDesiredCase()) {
-                callback(gl, oldWebGl, {
+                var uniformMatrix4fv = findLastMatrix4fv();
+                
+                callback(gl, gl.oldWebGl , {
                     uniform4fv: {
                         location: lastUniform4fv[0],
                         value: lastUniform4fv[1]
@@ -154,11 +210,22 @@ export function setup(canvas, callback: (webGl, oldWebGl, uniforms) => void): vo
                     uniform1f: {
                         location: preLastUniform1f[0],
                         value: preLastUniform1f[1]
-                    }
+                    },
+
+                    uniformMatrix4fv: uniformMatrix4fv ? {
+                        location: uniformMatrix4fv[0],
+                        transpose: uniformMatrix4fv[1],
+                        value: uniformMatrix4fv[2]
+                    } : null
                 });
+
+                gl.oldWebGl.uniform1f(lastUniform1f[0], lastUniform1f[1]);
                 
-                oldWebGl.uniform1f(lastUniform1f[0], lastUniform1f[1]);
-                oldWebGl.bindTexture(gl.TEXTURE_2D, lastTexture);
+                if(uniformMatrix4fv) {
+                    gl.oldWebGl.uniformMatrix4fv(uniformMatrix4fv[0], uniformMatrix4fv[1], uniformMatrix4fv[2]);
+                }
+
+                gl.oldWebGl .bindTexture(gl.TEXTURE_2D, lastTexture);
             }
 
             var result = oldMethod.apply(gl, args);
@@ -166,6 +233,6 @@ export function setup(canvas, callback: (webGl, oldWebGl, uniforms) => void): vo
             methodCalled(methodName);
 
             return result;
-        });
+        }, isGlEnabled);
     });
 }

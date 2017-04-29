@@ -1,5 +1,5 @@
-// Compiled using typings@0.3.4
-// Source: https://raw.githubusercontent.com/definitelytyped/DefinitelyTyped/56295f5058cac7ae458540423c50ac2dcf9fc711/underscore/underscore.d.ts
+// Compiled using typings@0.5.2
+// Source: https://raw.githubusercontent.com/DefinitelyTyped/DefinitelyTyped/56295f5058cac7ae458540423c50ac2dcf9fc711/underscore/underscore.d.ts
 // Type definitions for Underscore 1.7.0
 // Project: http://underscorejs.org/
 // Definitions by: Boris Yankov <https://github.com/borisyankov/>, Josh Baldwin <https://github.com/jbaldwin/>, Christopher Currens <https://github.com/ccurrens/>

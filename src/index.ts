@@ -1,5 +1,8 @@
 /// <reference path="../typings/main.d.ts" />
 import utils = require("./utils");
+import mathUtils = require("./mathUtils");
+
+export import drawUtils = require("gm-draw-utils");
 
 export class Mesh {
     textureURI: string;
@@ -13,6 +16,13 @@ export class Mesh {
     verticesBuffer: any;
     indicesBuffer: any;
     uvMapBuffer: any;
+
+    rotation: number = 0;
+    translation: {x: number, y: number, z: number} = {
+        x: 0,
+        y: 0,
+        z: 0
+    };
     
     private initialized: boolean = false;
     
@@ -76,6 +86,17 @@ export class Mesh {
         oldWebGl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(this.indices), gl.STATIC_DRAW);
     }
     
+    private applyTransformation(initialMatrix) {
+        var rotationMatrix = mathUtils.zRotation(this.rotation);
+        var translationMatrix = mathUtils.translation(this.translation.x, this.translation.y, this.translation.z);
+        
+        var resultMatrix = mathUtils.multiply(translationMatrix, rotationMatrix);
+
+        resultMatrix = mathUtils.multiply(initialMatrix, resultMatrix);
+
+        return new Float32Array(resultMatrix);
+    }
+    
     draw(gl: any, oldWebGl: any, uniforms: Uniforms) {
         oldWebGl.disableVertexAttribArray(0);
         oldWebGl.disableVertexAttribArray(1);
@@ -86,9 +107,13 @@ export class Mesh {
         this.initBuffers(gl, oldWebGl, true);
 
         oldWebGl.bindTexture(gl.TEXTURE_2D, this.texture);
-
-        oldWebGl.uniform4fv(uniforms.uniform4fv.location, uniforms.uniform4fv.value);
+        
+        oldWebGl.uniform4fv(uniforms.uniform4fv.location, [1, 1, 0, 0]);
         oldWebGl.uniform1f(uniforms.uniform1f.location, 1);
+
+        if(uniforms.uniformMatrix4fv) {
+            oldWebGl.uniformMatrix4fv(uniforms.uniformMatrix4fv.location, uniforms.uniformMatrix4fv.transpose, this.applyTransformation(uniforms.uniformMatrix4fv.value));
+        }
 
         oldWebGl.drawElements(gl.TRIANGLES, this.indices.length, gl.UNSIGNED_SHORT, 0);
     }
@@ -103,6 +128,12 @@ export class Uniforms {
     uniform1f: {
         location: any,
         value: any
+    }
+
+    uniformMatrix4fv: {
+        location: any,
+        transpose: boolean,
+        value: number[]
     }
 }
 
@@ -120,8 +151,44 @@ function drawScene(gl, oldWebGl, uniforms: Uniforms): void {
     });
 }
 
-function init(): void {
-    utils.setup(null, drawScene);
+export function init(canvasContainer): void {
+    utils.setup(drawScene, (gl) => {
+        if(gl.canvasContainer === false) {
+            return false;
+        }
+        
+        if(gl.canvasContainer === canvasContainer) {
+            return true;
+        }
+
+        if(isContainerOf(canvasContainer, gl.canvas)) {
+            gl.canvasContainer = canvasContainer;
+            
+            return true;
+        }
+        
+        if(gl.canvas && !gl.canvas.parentElement) {
+            return false;
+        }
+        
+        gl.canvasContainer = false;
+        
+        return false;
+    });
+}
+
+function isContainerOf(container: HTMLElement, element: HTMLElement): boolean {
+    var current = element;
+
+    while(current) {
+        if(container === current) {
+            return true;
+        }
+
+        current = current.parentElement;
+    }
+
+    return false;
 }
 
 export function addMesh(mesh: Mesh): void {
@@ -141,5 +208,3 @@ export function removeMesh(mesh: Mesh): void {
 
     activeMeshes = filteredMeshes;
 }
-
-init();

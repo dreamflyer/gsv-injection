@@ -1,15 +1,15 @@
 {
   "name": "gsv-injection",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "main": "dist/index.js",
   "scripts": {
     "compile": "rimraf dist && tsc",
-    "generate": "node build.js",
-    "build": "npm install && npm run compile && npm run generate"
+    "build": "npm install && typings install && npm run compile"
   },
   "dependencies": {
     "typescript-compiler": "1.4.1-2",
-    "underscore": "^1.8.3"
+    "underscore": "^1.8.3",
+    "gm-draw-utils": "*"
   },
   "typings": "./dist/index.d.ts",
   "repository": {
