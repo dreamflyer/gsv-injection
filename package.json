@@ -1,6 +1,6 @@
 {
   "name": "gsv-injection",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "main": "dist/index.js",
   "scripts": {
     "compile": "rimraf dist && tsc",
@@ -8,8 +8,7 @@
   },
   "dependencies": {
     "typescript-compiler": "1.4.1-2",
-    "underscore": "^1.8.3",
-    "gm-draw-utils": "*"
+    "underscore": "^1.8.3"
   },
   "typings": "./dist/index.d.ts",
   "repository": {
@@ -27,8 +26,6 @@
   "devDependencies": {
     "typings": "^0.5.1",
     "typescript": "1.8.7",
-    "webpack": "1.4.2",
-    "json-loader": "^0.5.1",
     "rimraf": "*"
   }
 }
