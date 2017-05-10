@@ -30,6 +30,29 @@ desiredCases.push([
     'bindBuffer'
 ]);
 
+desiredCases.push([
+    'drawElements',
+    'uniform4fv',
+    'bindTexture',
+    'bindBuffer',
+    'vertexAttribPointer',
+    'bindBuffer',
+    'vertexAttribPointer',
+    'bindBuffer'
+]);
+
+desiredCases.push([
+    'drawElements',
+    'uniform1f',
+    'uniform4fv',
+    'bindTexture',
+    'bindBuffer',
+    'vertexAttribPointer',
+    'bindBuffer',
+    'vertexAttribPointer',
+    'bindBuffer'
+]);
+
 function methodCalled(methodName): void {
     lastCalls.unshift(methodName);
     lastCalls.pop();
@@ -154,11 +177,13 @@ export function setup(callback: (webGl, oldWebGl, uniforms) => void, isGlEnabled
             if(!gl.oldWebGl) {
                 gl.oldWebGl = getOldWebgl(gl);
             }
-
+            
+            //console.log(methodName);
+            
             if(methodName === "useProgram") {
                 lastProgram = args[0];
             }
-
+            
             if(methodName === 'uniformMatrix4fv') {
                 var lastUniformMatrix4fv = [args[0], args[1], args[2]];
 
@@ -235,4 +260,20 @@ export function setup(callback: (webGl, oldWebGl, uniforms) => void, isGlEnabled
             return result;
         }, isGlEnabled);
     });
+}
+
+export class Debugger {
+    private acceptor: {accept: (name: string, value: any) => void};
+    
+    setValueAcceptor(acceptor: {accept: (name: string, value: any) => void}) {
+        this.acceptor = acceptor;
+    }
+    
+    setValue(name: string, value: any) {
+        if(!this.acceptor) {
+            return;
+        }
+        
+        this.acceptor.accept(name, value);
+    }
 }

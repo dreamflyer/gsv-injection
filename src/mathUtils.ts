@@ -52,6 +52,16 @@ export function scaling(sx, sy, sz) {
     ];
 }
 
+export function multiplyMatrices(matrices) {
+    var resultMatrix = matrices[0];
+
+    for(var i = 1; i < matrices.length; i++) {
+        resultMatrix = multiply(matrices[i], resultMatrix);
+    }
+
+    return resultMatrix;
+}
+
 export function multiply(a, b) {
     var a00 = a[0 * 4 + 0];
     var a01 = a[0 * 4 + 1];
@@ -104,4 +114,45 @@ export function multiply(a, b) {
         b30 * a02 + b31 * a12 + b32 * a22 + b33 * a32,
         b30 * a03 + b31 * a13 + b32 * a23 + b33 * a33,
     ];
+}
+
+export function transpose(matrix) {
+    var transposed = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+
+    for(var i = 0; i < 4; i++) {
+        for(var j = 0; j < 4; j++) {
+            var index1 = 4 * i + j;
+            var index2 = 4 * j + i;
+
+            transposed[index1] = matrix[index2];
+        }
+    }
+
+    return transposed;
+}
+
+var radToGrad = 180 / Math.PI;
+
+export function toRad(grad) {
+    return grad / radToGrad;
+}
+
+export function toGrad(rad) {
+    return radToGrad * rad;
+}
+
+export function normalizeAngleGrad(grad) {
+    var rad = toRad(grad);
+
+    return toGrad(Math.atan2(Math.sin(rad), Math.cos(rad)));
+}
+
+export function normalizeAngleRad(rad) {
+    return Math.atan2(Math.sin(rad), Math.cos(rad));
+}
+
+export function normalize(v) {
+    var length = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+
+    return {x: v.x / length, y: v.y / length, z: v.z / length}
 }

@@ -1,6 +1,10 @@
 import utils = require("./utils");
 import mathUtils = require("./mathUtils");
 
+var decompose = require("mat4-decompose");
+
+var drawDebugger: utils.Debugger = new utils.Debugger();
+
 export class Mesh {
     textureURI: string;
     
@@ -22,6 +26,10 @@ export class Mesh {
     };
     
     private initialized: boolean = false;
+    
+    constructor(private getHeading: () => number) {
+        
+    }
     
     init(gl, oldWebGl): void {
         if(this.initialized) {
@@ -74,7 +82,7 @@ export class Mesh {
         oldWebGl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.uvMap), gl.STATIC_DRAW);
         
         if(bindAttributes) {
-            oldWebGl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+            oldWebGl.vertexAttribPointer(0, 4, gl.FLOAT, false, 0, 0);
         }
         
         this.indicesBuffer = oldWebGl.createBuffer();
@@ -84,14 +92,23 @@ export class Mesh {
     }
     
     private applyTransformation(initialMatrix) {
-        var rotationMatrix = mathUtils.zRotation(this.rotation);
-        var translationMatrix = mathUtils.translation(this.translation.x, this.translation.y, this.translation.z);
+        var matrices: number[][] = [];
+
+        var matrixRotation: any = getMatrixRotation(initialMatrix);
+
+        var headingDelta = Math.PI + matrixRotation.heading + mathUtils.toRad(this.getHeading());
         
-        var resultMatrix = mathUtils.multiply(translationMatrix, rotationMatrix);
+        matrices.push(mathUtils.zRotation(this.rotation));
 
-        resultMatrix = mathUtils.multiply(initialMatrix, resultMatrix);
-
-        return new Float32Array(resultMatrix);
+        matrices.push(mathUtils.xRotation(-matrixRotation.pitch));
+        
+        matrices.push(mathUtils.translation(this.translation.x, this.translation.y, this.translation.z));
+        
+        matrices.push(mathUtils.zRotation(headingDelta));
+        
+        matrices.push(initialMatrix);
+        
+        return new Float32Array(mathUtils.multiplyMatrices(matrices));
     }
     
     draw(gl: any, oldWebGl: any, uniforms: Uniforms) {
@@ -105,15 +122,60 @@ export class Mesh {
 
         oldWebGl.bindTexture(gl.TEXTURE_2D, this.texture);
         
-        oldWebGl.uniform4fv(uniforms.uniform4fv.location, [1, 1, 0, 0]);
+        oldWebGl.uniform4fv(uniforms.uniform4fv.location, [5, 5, 0, 0]);
         oldWebGl.uniform1f(uniforms.uniform1f.location, 1);
 
         if(uniforms.uniformMatrix4fv) {
             oldWebGl.uniformMatrix4fv(uniforms.uniformMatrix4fv.location, uniforms.uniformMatrix4fv.transpose, this.applyTransformation(uniforms.uniformMatrix4fv.value));
         }
-
+        
         oldWebGl.drawElements(gl.TRIANGLES, this.indices.length, gl.UNSIGNED_SHORT, 0);
     }
+}
+
+function getMatrixRotation(matrix: number[]): {heading: number, pitch: number} {
+    var translation = [0, 0, 0];
+    var scale = [0, 0, 0];
+    var skew = [0, 0, 0];
+    var perspective = [0, 0, 0, 0];
+    var quaternion = [0, 0, 0, 0];
+
+    decompose(mathUtils.transpose(matrix), translation, scale, skew, perspective, quaternion);
+
+    drawDebugger.setValue('translation', translation);
+    drawDebugger.setValue('scale', scale);
+
+    drawDebugger.setValue('perspective', perspective);
+
+    drawDebugger.setValue('quaternion', quaternion);
+    
+    return getQaternionRotation(quaternion);
+}
+
+function getQaternionRotation(quaternion: number[]): {heading: number, pitch: number} {
+    var q = quaternion;
+    
+    var ysqr = q[1] * q[1];
+    
+    var t0 = 2.0 * (q[3] * q[0] + q[1] * q[2]);
+    var t1 = 1.0 - 2.0 * (q[0] * q[0] + ysqr);
+    
+    var roll = Math.atan2(t0, t1);
+    
+    var t2 = 2.0 * (q[3] * q[1] - q[2] * q[0]);
+    
+    t2 = t2 > 1.0 ? 1.0 : t2;
+    t2 = t2 < -1.0 ? -1.0 : t2;
+    
+    var pitch =  Math.asin(t2);
+
+    drawDebugger.setValue('pitch', pitch);
+    drawDebugger.setValue('roll', roll);
+
+    var t3 = 2.0 * (q[3] * q[2] + q[0] * q[1]);
+    var t4 = 1.0 - 2.0 * (q[1] * q[1] + q[2] * q[2]);
+    
+    return {heading: Math.atan2(t3, t4), pitch: pitch};
 }
 
 export class Uniforms {
@@ -134,7 +196,7 @@ export class Uniforms {
     }
 }
 
-var activeMeshes: Mesh[] = [];
+export var activeMeshes: Mesh[] = [];
 
 function drawScene(gl, oldWebGl, uniforms: Uniforms): void {
     activeMeshes.forEach((mesh: Mesh) => {
@@ -148,7 +210,7 @@ function drawScene(gl, oldWebGl, uniforms: Uniforms): void {
     });
 }
 
-export function init(canvasContainer): void {
+export function init(canvasContainer: any): void {
     utils.setup(drawScene, (gl) => {
         if(gl.canvasContainer === false) {
             return false;
@@ -204,4 +266,8 @@ export function removeMesh(mesh: Mesh): void {
     });
 
     activeMeshes = filteredMeshes;
+}
+
+export function setDebugAcceptor(acceptor: {accept: (name: string, value: any) => void}) {
+    drawDebugger.setValueAcceptor(acceptor);
 }
